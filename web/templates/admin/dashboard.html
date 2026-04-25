@@ -1,0 +1,73 @@
+{{define "admin_dashboard.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - LDAP Manager</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="dashboard">
+            <header>
+                <h1>Admin Dashboard</h1>
+                <a href="/admin/logout" class="logout-btn">Logout</a>
+            </header>
+
+            {{if .Error}}
+            <div class="error">{{.Error}}</div>
+            {{end}}
+
+            {{if .Success}}
+            <div class="success">{{.Success}}</div>
+            {{end}}
+
+            {{if .ResetLink}}
+            <div class="reset-link-display">
+                <h3>Password Reset Link Generated</h3>
+                <p>Share this link with the user:</p>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="reset-link-input" value="{{.ResetLink}}" readonly style="flex: 1;">
+                    <button type="button" id="copy-btn">Copy</button>
+                </div>
+                <p id="copy-status" style="margin-top: 10px; color: #059669; font-weight: bold;"></p>
+            </div>
+            {{end}}
+
+            <div class="search-section">
+                <h2>Search Users</h2>
+                <form method="POST" action="/admin/search">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <div class="form-group">
+                        <input type="text" name="query" placeholder="Enter username or email (empty = show first user)" value="{{.SearchQuery}}">
+                        <button type="submit">Search</button>
+                    </div>
+                </form>
+            </div>
+
+            {{if .SearchResult}}
+            <div class="search-results">
+                <h3>Search Results ({{len .SearchResult}} user(s) found)</h3>
+                {{range .SearchResult}}
+                <div class="user-card">
+                    <p><strong>Username:</strong> {{.UID}}</p>
+                    <p><strong>Name:</strong> {{.CN}}</p>
+                    {{if .Email}}
+                    <p><strong>Email:</strong> {{.Email}}</p>
+                    {{end}}
+                    <p><strong>DN:</strong> {{.DN}}</p>
+                    <form method="POST" action="/admin/reset/{{.DN}}">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                        <button type="submit" class="reset-btn">Generate Reset Link</button>
+                    </form>
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+    </div>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
+{{end}}

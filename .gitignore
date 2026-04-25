@@ -1,0 +1,43 @@
+# Binaries
+/ldap-manager
+/cmd/ldap-manager/ldap-manager
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Config files with secrets
+configs/config.yaml
+*.local.yaml
+
+# TLS certificates and keys
+*.key
+*.crt
+*.pem
+
+# Secrets
+secrets/
+/run/secrets/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

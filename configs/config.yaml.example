@@ -1,0 +1,62 @@
+server:
+  port: 8443
+  host: 0.0.0.0
+  tls:
+    enabled: true
+    cert_file: /etc/ldap-manager/tls/server.crt
+    key_file: /etc/ldap-manager/tls/server.key
+  session:
+    # REQUIRED: Generate with: openssl rand -base64 32
+    secret: ""
+    max_age: 3600  # Session lifetime in seconds (1 hour)
+
+ldap:
+  # Use ldap:// for plain LDAP or ldaps:// for LDAP over TLS
+  url: ldap://ldap.example.com:389
+  bind_dn: cn=admin,dc=example,dc=com
+
+  # Option 1: Password directly in config (not recommended for production)
+  bind_password: ""
+
+  # Option 2: Password from file (recommended for Docker/Kubernetes secrets)
+  # If both are set, bind_password_file takes precedence
+  bind_password_file: ""  # e.g., /run/secrets/ldap_password
+
+  base_dn: ou=users,dc=example,dc=com
+  admin_group_dn: cn=admins,ou=groups,dc=example,dc=com
+
+  # LDAP filter for user search (%s will be replaced with username)
+  user_filter: (uid=%s)
+
+token:
+  # Number of days a reset token is valid
+  validity_days: 3
+
+  # Length of generated tokens in bytes (32 bytes = 256 bits)
+  length_bytes: 32
+
+email:
+  # Enable/disable email notifications
+  enabled: true
+
+  smtp_host: smtp.example.com
+  smtp_port: 587
+  smtp_username: noreply@example.com
+  smtp_password: ""
+
+  from_address: noreply@example.com
+  from_name: Password Reset Service
+
+ratelimit:
+  # Maximum number of reset requests per IP address per hour
+  reset_per_ip_per_hour: 5
+
+  # Maximum number of login attempts per IP address per hour
+  login_per_ip_per_hour: 10
+
+logging:
+  # Log level: debug, info, warn, error
+  level: info
+
+  # Log format: json or text
+  format: json
