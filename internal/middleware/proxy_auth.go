@@ -84,13 +84,16 @@ func ProxyAuth(cfg *config.Config, sessionService *service.SessionService) func(
 				}
 
 				// Set session cookie
+				// In proxy mode behind TLS-terminating reverse proxy, force Secure=true
+				// even if TLS.Enabled=false, since browser communicates over HTTPS with proxy
+				secure := cfg.Server.TLS.Enabled || cfg.Server.Auth.Mode == "proxy"
 				http.SetCookie(w, &http.Cookie{
 					Name:     "session",
 					Value:    sessionCookie,
 					Path:     "/",
 					MaxAge:   cfg.Server.Session.MaxAge,
 					HttpOnly: true,
-					Secure:   cfg.Server.TLS.Enabled,
+					Secure:   secure,
 					SameSite: http.SameSiteStrictMode,
 				})
 				slog.Debug("proxy auth: created new session", "user", remoteUser)
