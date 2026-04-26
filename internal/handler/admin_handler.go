@@ -281,6 +281,18 @@ func (h *AdminHandler) GenerateResetToken(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Override resetLink with correct host from request
+	scheme := "https"
+	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
+		scheme = "http"
+	}
+	// Extract token from resetLink (format: baseURL/reset?token=xxx)
+	tokenStart := strings.Index(resetLink, "token=")
+	if tokenStart > 0 {
+		token := resetLink[tokenStart:]
+		resetLink = scheme + "://" + r.Host + "/reset?" + token
+	}
+
 	slog.Info("reset token generated", "admin", adminDN, "target_user", targetUser.UID, "reset_link", resetLink)
 
 	// Show success with reset link
@@ -317,7 +329,14 @@ func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	// Redirect based on auth mode
 	logoutURL := "/admin/login"
 	if h.config.Server.Auth.Mode == "proxy" && h.config.Server.Auth.LogoutURL != "" {
-		logoutURL = h.config.Server.Auth.LogoutURL
+		// In proxy mode, redirect to SSO logout with return URL
+		// Build return URL from current request
+		scheme := "https"
+		if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
+			scheme = "http"
+		}
+		returnURL := scheme + "://" + r.Host + "/admin/dashboard"
+		logoutURL = h.config.Server.Auth.LogoutURL + "?rd=" + url.QueryEscape(returnURL)
 	}
 
 	http.Redirect(w, r, logoutURL, http.StatusSeeOther)

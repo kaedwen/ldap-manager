@@ -40,7 +40,7 @@
                 <form method="POST" action="/admin/search">
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                     <div class="form-group">
-                        <input type="text" name="query" placeholder="Enter username or email (empty = show first user)" value="{{.SearchQuery}}">
+                        <input type="text" name="query" placeholder="Enter username or email (empty = show all users)" value="{{.SearchQuery}}">
                         <button type="submit">Search</button>
                     </div>
                 </form>
