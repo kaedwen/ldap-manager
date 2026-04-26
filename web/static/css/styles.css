@@ -252,11 +252,44 @@ button:hover {
     font-weight: 600;
 }
 
-.user-card .reset-btn {
+.user-card .button-group {
     margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.user-card .reset-btn {
     background: #059669;
+    width: auto;
 }
 
 .user-card .reset-btn:hover {
     background: #047857;
+}
+
+.user-card .reset-btn-email {
+    background: #2563eb;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+    width: auto;
+}
+
+.user-card .reset-btn-email:hover {
+    background: #1d4ed8;
+}
+
+.user-card .reset-btn-disabled {
+    background: #9ca3af;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: not-allowed;
+    width: auto;
+    opacity: 0.6;
 }

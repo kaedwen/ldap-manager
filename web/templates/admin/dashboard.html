@@ -57,10 +57,21 @@
                     <p><strong>Email:</strong> {{.Email}}</p>
                     {{end}}
                     <p><strong>DN:</strong> {{.DN}}</p>
-                    <form method="POST" action="/admin/reset/{{.DN}}">
-                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                        <button type="submit" class="reset-btn">Generate Reset Link</button>
-                    </form>
+                    <div class="button-group">
+                        <form method="POST" action="/admin/reset/{{.DN}}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                            <button type="submit" class="reset-btn">Generate Reset Link</button>
+                        </form>
+                        {{if .Email}}
+                        <form method="POST" action="/admin/reset/{{.DN}}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                            <input type="hidden" name="send_email" value="true">
+                            <button type="submit" class="reset-btn-email">Generate & Send Email</button>
+                        </form>
+                        {{else}}
+                        <button type="button" class="reset-btn-disabled" disabled title="User has no email address">Generate & Send Email</button>
+                        {{end}}
+                    </div>
                 </div>
                 {{end}}
             </div>
