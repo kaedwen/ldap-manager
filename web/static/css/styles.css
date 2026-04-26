@@ -257,11 +257,15 @@ button:hover {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .user-card .reset-btn {
     background: #059669;
     width: auto;
+    padding: 10px 16px;
+    font-size: 16px;
+    font-weight: normal;
 }
 
 .user-card .reset-btn:hover {
@@ -271,12 +275,14 @@ button:hover {
 .user-card .reset-btn-email {
     background: #2563eb;
     color: white;
-    padding: 8px 16px;
+    padding: 10px 16px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.3s;
     width: auto;
+    font-size: 16px;
+    font-weight: normal;
 }
 
 .user-card .reset-btn-email:hover {
@@ -286,10 +292,12 @@ button:hover {
 .user-card .reset-btn-disabled {
     background: #9ca3af;
     color: white;
-    padding: 8px 16px;
+    padding: 10px 16px;
     border: none;
     border-radius: 4px;
     cursor: not-allowed;
     width: auto;
     opacity: 0.6;
+    font-size: 16px;
+    font-weight: normal;
 }
