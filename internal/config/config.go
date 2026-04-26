@@ -82,13 +82,14 @@ type PasswordPolicyConfig struct {
 }
 
 type EmailConfig struct {
-	Enabled      bool   `yaml:"enabled"`
-	SMTPHost     string `yaml:"smtp_host"`
-	SMTPPort     int    `yaml:"smtp_port"`
-	SMTPUsername string `yaml:"smtp_username"`
-	SMTPPassword string `yaml:"smtp_password"`
-	FromAddress  string `yaml:"from_address"`
-	FromName     string `yaml:"from_name"`
+	Enabled           bool   `yaml:"enabled"`
+	SMTPHost          string `yaml:"smtp_host"`
+	SMTPPort          int    `yaml:"smtp_port"`
+	SMTPUsername      string `yaml:"smtp_username"`
+	SMTPPassword      string `yaml:"smtp_password"`
+	FromAddress       string `yaml:"from_address"`
+	FromName          string `yaml:"from_name"`
+	InsecureSkipVerify bool  `yaml:"insecure_skip_verify"` // Skip TLS certificate verification (use for internal relays)
 }
 
 type RateLimitConfig struct {
@@ -303,6 +304,9 @@ func (c *Config) applyEnvOverrides() {
 	}
 	if v := os.Getenv("LDAP_MANAGER_EMAIL_FROM_NAME"); v != "" {
 		c.Email.FromName = v
+	}
+	if v := os.Getenv("LDAP_MANAGER_EMAIL_INSECURE_SKIP_VERIFY"); v != "" {
+		c.Email.InsecureSkipVerify = v == "true"
 	}
 
 	if v := os.Getenv("LDAP_MANAGER_RATELIMIT_RESET_PER_IP_PER_HOUR"); v != "" {
