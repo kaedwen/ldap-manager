@@ -15,22 +15,35 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	Server    ServerConfig    `yaml:"server"`
-	LDAP      LDAPConfig      `yaml:"ldap"`
-	Token     TokenConfig     `yaml:"token"`
-	Email     EmailConfig     `yaml:"email"`
-	RateLimit RateLimitConfig `yaml:"ratelimit"`
-	Logging   LoggingConfig   `yaml:"logging"`
+	Server    ServerConfig         `yaml:"server"`
+	LDAP      LDAPConfig           `yaml:"ldap"`
+	Token     TokenConfig          `yaml:"token"`
+	Password  PasswordPolicyConfig `yaml:"password"`
+	Email     EmailConfig          `yaml:"email"`
+	RateLimit RateLimitConfig      `yaml:"ratelimit"`
+	Logging   LoggingConfig        `yaml:"logging"`
 
 	mu              sync.RWMutex
 	passwordWatcher *fsnotify.Watcher
 }
 
 type ServerConfig struct {
-	Port    int           `yaml:"port"`
-	Host    string        `yaml:"host"`
-	TLS     TLSConfig     `yaml:"tls"`
-	Session SessionConfig `yaml:"session"`
+	Port       int           `yaml:"port"`
+	Host       string        `yaml:"host"`
+	HealthPort int           `yaml:"health_port"` // Separate port for health checks
+	TLS        TLSConfig     `yaml:"tls"`
+	Session    SessionConfig `yaml:"session"`
+	Auth       AuthConfig    `yaml:"auth"`
+}
+
+type AuthConfig struct {
+	Mode              string `yaml:"mode"`                // "internal" or "proxy"
+	TrustedProxyDepth int    `yaml:"trusted_proxy_depth"` // How many proxies to trust for header forwarding
+	HeaderUser        string `yaml:"header_user"`         // Header name for username (default: Remote-User)
+	HeaderGroups      string `yaml:"header_groups"`       // Header name for groups (default: Remote-Groups)
+	HeaderEmail       string `yaml:"header_email"`        // Header name for email (default: Remote-Email)
+	HeaderName        string `yaml:"header_name"`         // Header name for display name (default: Remote-Name)
+	RequireGroup      string `yaml:"require_group"`       // Required group name for admin access (default: admins)
 }
 
 type TLSConfig struct {
@@ -57,6 +70,14 @@ type LDAPConfig struct {
 type TokenConfig struct {
 	ValidityDays int `yaml:"validity_days"`
 	LengthBytes  int `yaml:"length_bytes"`
+}
+
+type PasswordPolicyConfig struct {
+	MinLength      int  `yaml:"min_length"`
+	RequireUpper   bool `yaml:"require_upper"`
+	RequireLower   bool `yaml:"require_lower"`
+	RequireDigit   bool `yaml:"require_digit"`
+	RequireSpecial bool `yaml:"require_special"`
 }
 
 type EmailConfig struct {
@@ -125,9 +146,22 @@ func Load(configPath string) (*Config, error) {
 func (c *Config) setDefaults() {
 	c.Server.Port = 8443
 	c.Server.Host = "0.0.0.0"
+	c.Server.HealthPort = 9090 // Default health check port
 	c.Server.Session.MaxAge = 3600
+	c.Server.Auth.Mode = "internal"
+	c.Server.Auth.TrustedProxyDepth = 1
+	c.Server.Auth.HeaderUser = "Remote-User"
+	c.Server.Auth.HeaderGroups = "Remote-Groups"
+	c.Server.Auth.HeaderEmail = "Remote-Email"
+	c.Server.Auth.HeaderName = "Remote-Name"
+	c.Server.Auth.RequireGroup = "admins"
 	c.Token.ValidityDays = 3
 	c.Token.LengthBytes = 32
+	c.Password.MinLength = 12
+	c.Password.RequireUpper = true
+	c.Password.RequireLower = true
+	c.Password.RequireDigit = true
+	c.Password.RequireSpecial = true
 	c.RateLimit.ResetPerIPPerHour = 5
 	c.RateLimit.LoginPerIPPerHour = 10
 	c.Logging.Level = "info"
@@ -145,6 +179,11 @@ func (c *Config) applyEnvOverrides() {
 	if v := os.Getenv("LDAP_MANAGER_SERVER_HOST"); v != "" {
 		c.Server.Host = v
 	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_HEALTH_PORT"); v != "" {
+		if port, err := strconv.Atoi(v); err == nil {
+			c.Server.HealthPort = port
+		}
+	}
 	if v := os.Getenv("LDAP_MANAGER_SERVER_TLS_ENABLED"); v != "" {
 		c.Server.TLS.Enabled = v == "true"
 	}
@@ -161,6 +200,29 @@ func (c *Config) applyEnvOverrides() {
 		if age, err := strconv.Atoi(v); err == nil {
 			c.Server.Session.MaxAge = age
 		}
+	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_MODE"); v != "" {
+		c.Server.Auth.Mode = v
+	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_TRUSTED_PROXY_DEPTH"); v != "" {
+		if depth, err := strconv.Atoi(v); err == nil {
+			c.Server.Auth.TrustedProxyDepth = depth
+		}
+	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_HEADER_USER"); v != "" {
+		c.Server.Auth.HeaderUser = v
+	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_HEADER_GROUPS"); v != "" {
+		c.Server.Auth.HeaderGroups = v
+	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_HEADER_EMAIL"); v != "" {
+		c.Server.Auth.HeaderEmail = v
+	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_HEADER_NAME"); v != "" {
+		c.Server.Auth.HeaderName = v
+	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_REQUIRE_GROUP"); v != "" {
+		c.Server.Auth.RequireGroup = v
 	}
 
 	if v := os.Getenv("LDAP_MANAGER_LDAP_URL"); v != "" {
@@ -194,6 +256,24 @@ func (c *Config) applyEnvOverrides() {
 		if length, err := strconv.Atoi(v); err == nil {
 			c.Token.LengthBytes = length
 		}
+	}
+
+	if v := os.Getenv("LDAP_MANAGER_PASSWORD_MIN_LENGTH"); v != "" {
+		if length, err := strconv.Atoi(v); err == nil {
+			c.Password.MinLength = length
+		}
+	}
+	if v := os.Getenv("LDAP_MANAGER_PASSWORD_REQUIRE_UPPER"); v != "" {
+		c.Password.RequireUpper = v == "true"
+	}
+	if v := os.Getenv("LDAP_MANAGER_PASSWORD_REQUIRE_LOWER"); v != "" {
+		c.Password.RequireLower = v == "true"
+	}
+	if v := os.Getenv("LDAP_MANAGER_PASSWORD_REQUIRE_DIGIT"); v != "" {
+		c.Password.RequireDigit = v == "true"
+	}
+	if v := os.Getenv("LDAP_MANAGER_PASSWORD_REQUIRE_SPECIAL"); v != "" {
+		c.Password.RequireSpecial = v == "true"
 	}
 
 	if v := os.Getenv("LDAP_MANAGER_EMAIL_ENABLED"); v != "" {
@@ -333,6 +413,14 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid server port: %d", c.Server.Port)
 	}
 
+	if c.Server.HealthPort < 1 || c.Server.HealthPort > 65535 {
+		return fmt.Errorf("invalid health port: %d", c.Server.HealthPort)
+	}
+
+	if c.Server.Port == c.Server.HealthPort {
+		return fmt.Errorf("health port must be different from main server port")
+	}
+
 	if c.Server.TLS.Enabled {
 		if c.Server.TLS.CertFile == "" {
 			return fmt.Errorf("TLS cert file is required when TLS is enabled")
@@ -372,6 +460,10 @@ func (c *Config) Validate() error {
 
 	if c.LDAP.AdminGroupDN == "" {
 		return fmt.Errorf("LDAP admin group DN is required")
+	}
+
+	if c.Server.Auth.Mode != "internal" && c.Server.Auth.Mode != "proxy" {
+		return fmt.Errorf("auth mode must be 'internal' or 'proxy'")
 	}
 
 	if c.Token.ValidityDays < 1 {

@@ -12,6 +12,7 @@ import (
 	"github.com/kaedwen/ldap-manager/internal/repository"
 	"github.com/kaedwen/ldap-manager/internal/server"
 	"github.com/kaedwen/ldap-manager/internal/service"
+	"github.com/kaedwen/ldap-manager/pkg/validator"
 )
 
 func main() {
@@ -72,12 +73,22 @@ func main() {
 		baseURL = fmt.Sprintf("https://localhost:%d", cfg.Server.Port)
 	}
 
+	// Create password requirements from config
+	passwordReqs := validator.PasswordRequirements{
+		MinLength:      cfg.Password.MinLength,
+		RequireUpper:   cfg.Password.RequireUpper,
+		RequireLower:   cfg.Password.RequireLower,
+		RequireDigit:   cfg.Password.RequireDigit,
+		RequireSpecial: cfg.Password.RequireSpecial,
+	}
+
 	resetService := service.NewResetService(
 		ldapRepo,
 		cfg.Token.LengthBytes,
 		cfg.Token.ValidityDays,
 		baseURL,
 		notificationService,
+		passwordReqs,
 	)
 
 	// Load templates

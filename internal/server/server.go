@@ -20,6 +20,7 @@ import (
 type Server struct {
 	config          *config.Config
 	httpServer      *http.Server
+	healthServer    *http.Server
 	sessionService  *service.SessionService
 	authService     *service.AuthService
 	resetService    *service.ResetService
@@ -58,7 +59,7 @@ func (s *Server) Start() error {
 	// Setup routes
 	mux := s.setupRoutes()
 
-	// Create HTTP server
+	// Create main HTTP server
 	addr := fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port)
 	s.httpServer = &http.Server{
 		Addr:         addr,
@@ -68,7 +69,30 @@ func (s *Server) Start() error {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start server in goroutine
+	// Create separate health check server (no auth, no middleware)
+	healthMux := http.NewServeMux()
+	healthMux.HandleFunc("GET /health", s.healthHandler.Check)
+	healthMux.HandleFunc("GET /ready", s.healthHandler.Check)
+	healthMux.HandleFunc("GET /live", s.healthHandler.Check)
+
+	healthAddr := fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.HealthPort)
+	s.healthServer = &http.Server{
+		Addr:         healthAddr,
+		Handler:      healthMux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
+
+	// Start health server in goroutine
+	go func() {
+		slog.Info("starting health check server", "addr", healthAddr)
+		if err := s.healthServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("health server error", "error", err)
+		}
+	}()
+
+	// Start main server in goroutine
 	errChan := make(chan error, 1)
 	go func() {
 		if s.config.Server.TLS.Enabled {
@@ -105,11 +129,20 @@ func (s *Server) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	slog.Info("shutting down server gracefully")
+	slog.Info("shutting down servers gracefully")
+
+	// Shutdown health server
+	if s.healthServer != nil {
+		if err := s.healthServer.Shutdown(ctx); err != nil {
+			slog.Error("health server shutdown failed", "error", err)
+		}
+	}
+
+	// Shutdown main server
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		return fmt.Errorf("server shutdown failed: %w", err)
 	}
 
-	slog.Info("server stopped")
+	slog.Info("servers stopped")
 	return nil
 }

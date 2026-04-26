@@ -18,6 +18,7 @@ type ResetService struct {
 	validityDays  int
 	baseURL       string
 	notifService  *NotificationService
+	passwordReqs  validator.PasswordRequirements
 }
 
 // NewResetService creates a new reset service
@@ -27,6 +28,7 @@ func NewResetService(
 	validityDays int,
 	baseURL string,
 	notifService *NotificationService,
+	passwordReqs validator.PasswordRequirements,
 ) *ResetService {
 	return &ResetService{
 		ldapRepo:     ldapRepo,
@@ -34,6 +36,7 @@ func NewResetService(
 		validityDays: validityDays,
 		baseURL:      baseURL,
 		notifService: notifService,
+		passwordReqs: passwordReqs,
 	}
 }
 
@@ -103,8 +106,7 @@ func (s *ResetService) ResetPassword(token, newPassword string) error {
 	}
 
 	// Validate password strength
-	requirements := validator.DefaultRequirements()
-	if err := validator.ValidatePassword(newPassword, requirements); err != nil {
+	if err := validator.ValidatePassword(newPassword, s.passwordReqs); err != nil {
 		return domain.ErrPasswordTooWeak
 	}
 

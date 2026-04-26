@@ -39,9 +39,12 @@ COPY --from=builder /build/web ./web
 # Copy config template (optional)
 COPY --from=builder /build/configs/config.yaml.example ./configs/
 
-EXPOSE 8080
+EXPOSE 8080 9090
 
 # Note: Health check not possible with scratch image (no shell/wget)
-# Use external health checks (Docker Compose, Kubernetes probes)
+# Use external health checks on port 9090:
+#   curl http://localhost:9090/health
+#   Docker/Podman: healthcheck.test: ["CMD-SHELL", "wget ..."]
+#   Kubernetes: livenessProbe.httpGet.port: 9090
 
 ENTRYPOINT ["/app/ldap-manager"]

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/kaedwen/ldap-manager/internal/domain"
 	"github.com/kaedwen/ldap-manager/internal/service"
 )
 
@@ -11,6 +12,7 @@ type contextKey string
 
 const (
 	UserDNKey    contextKey = "user_dn"
+	UserKey      contextKey = "user"
 	CSRFTokenKey contextKey = "csrf_token"
 )
 
@@ -61,4 +63,20 @@ func GetUserDN(r *http.Request) string {
 func GetCSRFToken(r *http.Request) string {
 	csrfToken, _ := r.Context().Value(CSRFTokenKey).(string)
 	return csrfToken
+}
+
+// SetUserContext stores a user object in the context
+func SetUserContext(ctx context.Context, user *domain.User) context.Context {
+	return context.WithValue(ctx, UserKey, user)
+}
+
+// SetCSRFToken stores a CSRF token in the context
+func SetCSRFToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, CSRFTokenKey, token)
+}
+
+// GetUser extracts the user from the request context
+func GetUser(r *http.Request) *domain.User {
+	user, _ := r.Context().Value(UserKey).(*domain.User)
+	return user
 }

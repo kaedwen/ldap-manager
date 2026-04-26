@@ -1,0 +1,27 @@
+---
+# Authelia Configuration for ldap-manager
+
+# Access Control Rules
+access_control:
+  default_policy: deny
+
+  rules:
+    # Public routes - no authentication required
+    - domain: ldap.example.com
+      policy: bypass
+      resources:
+        - "^/reset([?/].*)?$"     # Password reset page
+        - "^/static/.*$"          # Static assets (CSS, JS)
+        - "^/health$"             # Health check endpoint
+
+    # Admin routes - require 2FA
+    - domain: ldap.example.com
+      policy: two_factor
+      resources:
+        - "^/admin.*$"            # All admin routes
+      subject:
+        - "group:admins"          # Only members of LDAP admins group
+
+    # Deny everything else by default
+    - domain: ldap.example.com
+      policy: deny

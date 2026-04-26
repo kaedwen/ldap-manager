@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  ldap-manager:
+    image: ghcr.io/kaedwen/ldap-manager:latest
+    container_name: ldap-manager
+    restart: unless-stopped
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      # Enable proxy mode for OIDC authentication (Authelia, Authentik, etc.)
+      - LDAP_MANAGER_SERVER_AUTH_MODE=proxy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    networks:
+      - traefik
+      - ldap
+    labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+
+      # HTTP Router
+      - "traefik.http.routers.ldap-manager.rule=Host(`ldap.example.com`)"
+      - "traefik.http.routers.ldap-manager.entrypoints=websecure"
+      - "traefik.http.routers.ldap-manager.tls=true"
+      - "traefik.http.routers.ldap-manager.tls.certresolver=letsencrypt"
+
+      # Service
+      - "traefik.http.services.ldap-manager.loadbalancer.server.port=8080"
+
+      # Middleware chain for admin routes
+      - "traefik.http.middlewares.ldap-admin-auth.forwardauth.address=http://authelia:9091/api/authz/forward-auth"
+      - "traefik.http.middlewares.ldap-admin-auth.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.ldap-admin-auth.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
+
+      # Admin routes - protected with Authelia
+      - "traefik.http.routers.ldap-manager-admin.rule=Host(`ldap.example.com`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.ldap-manager-admin.entrypoints=websecure"
+      - "traefik.http.routers.ldap-manager-admin.tls=true"
+      - "traefik.http.routers.ldap-manager-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.ldap-manager-admin.middlewares=ldap-admin-auth@docker"
+      - "traefik.http.routers.ldap-manager-admin.priority=100"
+
+      # Public routes - no authentication (reset, static, health)
+      - "traefik.http.routers.ldap-manager-public.rule=Host(`ldap.example.com`) && (PathPrefix(`/reset`) || PathPrefix(`/static`) || Path(`/health`))"
+      - "traefik.http.routers.ldap-manager-public.entrypoints=websecure"
+      - "traefik.http.routers.ldap-manager-public.tls=true"
+      - "traefik.http.routers.ldap-manager-public.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.ldap-manager-public.priority=200"
+
+networks:
+  traefik:
+    external: true
+  ldap:
+    external: true

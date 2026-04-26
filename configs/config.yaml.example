@@ -1,6 +1,10 @@
 server:
   port: 8443
   host: 0.0.0.0
+
+  # Separate port for health checks (no auth, no middleware)
+  # Use this for container health checks, Kubernetes probes, etc.
+  health_port: 9090
   tls:
     enabled: true
     cert_file: /etc/ldap-manager/tls/server.crt
@@ -9,6 +13,25 @@ server:
     # REQUIRED: Generate with: openssl rand -base64 32
     secret: ""
     max_age: 3600  # Session lifetime in seconds (1 hour)
+  auth:
+    # Authentication mode: "internal" or "proxy"
+    # - internal: ldap-manager handles authentication (login page + session)
+    # - proxy: delegate authentication to OIDC proxy (Authelia, Authentik, Keycloak, etc.)
+    mode: internal
+
+    # Number of reverse proxies to trust for header forwarding (X-Forwarded-For, Remote-User, etc.)
+    # Set to 1 if behind Traefik/nginx, 2 if behind multiple proxies
+    trusted_proxy_depth: 1
+
+    # Header names for proxy mode (only used when mode=proxy)
+    # These are the default values for Authelia, but can be customized for other proxies
+    header_user: Remote-User       # Header containing username
+    header_groups: Remote-Groups   # Header containing group memberships (comma or space separated)
+    header_email: Remote-Email     # Header containing email address
+    header_name: Remote-Name       # Header containing display name
+
+    # Required group for admin access (case-insensitive)
+    require_group: admins
 
 ldap:
   # Use ldap:// for plain LDAP or ldaps:// for LDAP over TLS
@@ -34,6 +57,22 @@ token:
 
   # Length of generated tokens in bytes (32 bytes = 256 bits)
   length_bytes: 32
+
+password:
+  # Minimum password length
+  min_length: 12
+
+  # Require at least one uppercase letter
+  require_upper: true
+
+  # Require at least one lowercase letter
+  require_lower: true
+
+  # Require at least one digit
+  require_digit: true
+
+  # Require at least one special character
+  require_special: true
 
 email:
   # Enable/disable email notifications
