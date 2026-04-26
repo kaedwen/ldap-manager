@@ -266,8 +266,15 @@ func (h *AdminHandler) GenerateResetToken(w http.ResponseWriter, r *http.Request
 	// Check if email should be sent
 	sendEmail := r.FormValue("send_email") == "true"
 
-	// Generate reset token
-	resetLink, err := h.resetService.InitiateReset(adminUser, targetUser, sendEmail)
+	// Determine scheme and host for reset link
+	scheme := "https"
+	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
+		scheme = "http"
+	}
+	isHTTPS := scheme == "https"
+
+	// Generate reset token with correct host
+	resetLink, err := h.resetService.InitiateReset(adminUser, targetUser, sendEmail, r.Host, isHTTPS)
 	if err != nil {
 		slog.Error("failed to generate reset token", "error", err, "target_user", targetUser.UID)
 		data := TemplateData{
@@ -279,18 +286,6 @@ func (h *AdminHandler) GenerateResetToken(w http.ResponseWriter, r *http.Request
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
-	}
-
-	// Override resetLink with correct host from request
-	scheme := "https"
-	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
-		scheme = "http"
-	}
-	// Extract token from resetLink (format: baseURL/reset?token=xxx)
-	tokenStart := strings.Index(resetLink, "token=")
-	if tokenStart > 0 {
-		token := resetLink[tokenStart:]
-		resetLink = scheme + "://" + r.Host + "/reset?" + token
 	}
 
 	slog.Info("reset token generated", "admin", adminDN, "target_user", targetUser.UID, "reset_link", resetLink)

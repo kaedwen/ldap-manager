@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"time"
 
 	"github.com/kaedwen/ldap-manager/internal/domain"
@@ -41,7 +42,7 @@ func NewResetService(
 }
 
 // InitiateReset generates a reset token for a user
-func (s *ResetService) InitiateReset(adminUser *domain.User, targetUser *domain.User, sendEmail bool) (string, error) {
+func (s *ResetService) InitiateReset(adminUser *domain.User, targetUser *domain.User, sendEmail bool, requestHost string, isHTTPS bool) (string, error) {
 	// Generate token
 	token, err := crypto.GenerateToken(s.tokenLength)
 	if err != nil {
@@ -59,8 +60,32 @@ func (s *ResetService) InitiateReset(adminUser *domain.User, targetUser *domain.
 		return "", fmt.Errorf("failed to store reset token: %w", err)
 	}
 
-	// Build reset link
-	resetLink := fmt.Sprintf("%s/reset?token=%s", s.baseURL, token)
+	// Build reset link - use request host if provided, otherwise fall back to baseURL
+	var resetLink string
+	if requestHost != "" {
+		scheme := "https"
+		if !isHTTPS {
+			scheme = "http"
+		}
+		u := &url.URL{
+			Scheme:   scheme,
+			Host:     requestHost,
+			Path:     "/reset",
+			RawQuery: url.Values{"token": []string{token}}.Encode(),
+		}
+		resetLink = u.String()
+	} else {
+		// Parse baseURL and add token parameter
+		u, err := url.Parse(s.baseURL)
+		if err != nil {
+			// Fallback to simple concatenation if parsing fails
+			resetLink = fmt.Sprintf("%s/reset?token=%s", s.baseURL, token)
+		} else {
+			u.Path = "/reset"
+			u.RawQuery = url.Values{"token": []string{token}}.Encode()
+			resetLink = u.String()
+		}
+	}
 
 	slog.Info("password reset initiated",
 		"admin", adminUser.UID,

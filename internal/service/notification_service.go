@@ -183,12 +183,24 @@ func (s *NotificationService) buildMIMEMessage(to, subject, body string) string 
 	sb.WriteString(to)
 	sb.WriteString("\r\n")
 
+	// Add Reply-To to prevent spam classification
+	sb.WriteString("Reply-To: ")
+	sb.WriteString(s.config.FromAddress)
+	sb.WriteString("\r\n")
+
 	sb.WriteString("Subject: ")
 	sb.WriteString(subject)
 	sb.WriteString("\r\n")
 
 	sb.WriteString("MIME-Version: 1.0\r\n")
 	sb.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+	sb.WriteString("Content-Transfer-Encoding: 8bit\r\n")
+
+	// Add message headers to reduce spam score
+	sb.WriteString("X-Mailer: LDAP Password Manager\r\n")
+	sb.WriteString("X-Priority: 3\r\n")
+	sb.WriteString("Importance: normal\r\n")
+
 	sb.WriteString("\r\n")
 
 	sb.WriteString(body)
