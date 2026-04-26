@@ -40,6 +40,14 @@ func (s *Server) setupRoutes() http.Handler {
 	csrfMW := middleware.CSRFMiddleware(s.sessionService)
 
 	// Admin protected routes (require authentication)
+	// Root redirect to dashboard
+	mux.Handle("GET /", authMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)
+			return
+		}
+		http.NotFound(w, r)
+	})))
 	mux.Handle("GET /admin/dashboard", authMW(http.HandlerFunc(s.adminHandler.Dashboard)))
 	mux.Handle("GET /admin/logout", authMW(http.HandlerFunc(s.adminHandler.Logout)))
 

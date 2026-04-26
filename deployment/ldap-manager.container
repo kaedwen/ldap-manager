@@ -1,0 +1,48 @@
+[Unit]
+Description=LDAP Password Manager
+After=network-online.target openldap.service authelia.service traefik.service
+Wants=network-online.target
+Requires=openldap.service
+
+[Container]
+Image=ghcr.io/kaedwen/ldap-manager:latest
+ContainerName=ldap-manager
+AutoUpdate=registry
+Exec=-config /app/config.yaml
+
+# Volumes
+Volume=/var/mnt/storage/config-001/ldap-manager/config.yaml:/app/config.yaml:ro,z
+
+# Ports (9090 only for host health check, not exposed externally)
+PublishPort=127.0.0.1:9090:9090
+
+# Secrets as environment variables
+Secret=ldap_manager_session_secret,type=env,target=LDAP_MANAGER_SERVER_SESSION_SECRET
+Secret=ldap_admin_password,type=env,target=LDAP_MANAGER_LDAP_BIND_PASSWORD
+
+# Environment variables
+Environment=LDAP_MANAGER_SERVER_AUTH_MODE=proxy
+
+# Traefik Labels
+Label=traefik.enable=true
+Label=traefik.http.routers.ldap-manager.rule=Host(`passwd.heinrich.blue`)
+Label=traefik.http.routers.ldap-manager.entrypoints=websecure
+Label=traefik.http.routers.ldap-manager.tls=true
+Label=traefik.http.routers.ldap-manager.tls.certresolver=hetzner
+Label=traefik.http.routers.ldap-manager.middlewares=authelia@file
+Label=traefik.http.services.ldap-manager.loadbalancer.server.port=8080
+
+# Networks
+Network=base.network
+Network=openldap.network
+
+# No health check - scratch image has no tools
+# Traefik will route once container is running
+# Monitor with: podman logs ldap-manager
+
+[Service]
+Restart=always
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

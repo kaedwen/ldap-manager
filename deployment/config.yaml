@@ -1,0 +1,56 @@
+server:
+  port: 8080
+  host: 0.0.0.0
+  health_port: 9090  # Separate port for health checks (no auth, internal use)
+  tls:
+    enabled: false  # TLS handled by Traefik
+    cert_file: ""
+    key_file: ""
+  session:
+    secret: ""  # Loaded from LDAP_MANAGER_SERVER_SESSION_SECRET env var
+    max_age: 3600
+  auth:
+    mode: proxy  # Authelia SSO integration
+    trusted_proxy_depth: 1
+    header_user: Remote-User
+    header_groups: Remote-Groups
+    header_email: Remote-Email
+    header_name: Remote-Name
+    require_group: admins
+
+ldap:
+  url: ldap://openldap:389  # Container name resolution via base.network
+  bind_dn: cn=admin,dc=heinrich,dc=blue
+  bind_password: ""  # Loaded from LDAP_MANAGER_LDAP_BIND_PASSWORD env var
+  bind_password_file: ""
+  base_dn: dc=heinrich,dc=blue
+  admin_group_dn: cn=admins,ou=groups,dc=heinrich,dc=blue
+  user_filter: (uid=%s)
+
+token:
+  validity_days: 3
+  length_bytes: 32
+
+password:
+  min_length: 12
+  require_upper: true
+  require_lower: true
+  require_digit: true
+  require_special: true
+
+email:
+  enabled: false  # Can be enabled later with SMTP config
+  smtp_host: smtp.example.com
+  smtp_port: 587
+  smtp_username: noreply@example.com
+  smtp_password: ""
+  from_address: noreply@example.com
+  from_name: Password Reset Service
+
+ratelimit:
+  reset_per_ip_per_hour: 50
+  login_per_ip_per_hour: 50
+
+logging:
+  level: info
+  format: json

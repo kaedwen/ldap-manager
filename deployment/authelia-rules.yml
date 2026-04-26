@@ -1,0 +1,21 @@
+# Authelia Access Control Rules for LDAP Manager
+# Add these rules to /var/mnt/storage/config-001/authelia/configuration.yml
+
+access_control:
+  default_policy: deny
+
+  rules:
+    # LDAP Manager - Public password reset (no authentication required)
+    - domain: passwd.heinrich.blue
+      resources:
+        - '^/reset.*$'        # Password reset flow
+        - '^/static/.*$'      # Static assets (CSS, JS)
+      policy: bypass
+
+    # LDAP Manager - Admin interface (requires authentication + 2FA)
+    - domain: passwd.heinrich.blue
+      resources:
+        - '^/admin.*$'        # Admin dashboard, user search, token generation
+      policy: two_factor
+      subject:
+        - 'group:admins'      # Only users in 'admins' LDAP group
