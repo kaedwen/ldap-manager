@@ -17,6 +17,7 @@ server:
     header_email: Remote-Email
     header_name: Remote-Name
     require_group: admins
+    logout_url: ""  # Set to SSO logout URL when using proxy mode (e.g., https://auth.example.com/logout)
 
 ldap:
   url: ldap://openldap:389  # Container name resolution via base.network

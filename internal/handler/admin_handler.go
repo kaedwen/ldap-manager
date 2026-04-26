@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/kaedwen/ldap-manager/internal/config"
 	"github.com/kaedwen/ldap-manager/internal/domain"
 	"github.com/kaedwen/ldap-manager/internal/middleware"
 	"github.com/kaedwen/ldap-manager/internal/repository"
@@ -21,6 +22,7 @@ type AdminHandler struct {
 	ldapRepo       repository.LDAPRepository
 	templates      *template.Template
 	baseURL        string
+	config         *config.Config
 }
 
 // NewAdminHandler creates a new admin handler
@@ -31,6 +33,7 @@ func NewAdminHandler(
 	ldapRepo repository.LDAPRepository,
 	templates *template.Template,
 	baseURL string,
+	cfg *config.Config,
 ) *AdminHandler {
 	return &AdminHandler{
 		authService:    authService,
@@ -39,6 +42,7 @@ func NewAdminHandler(
 		ldapRepo:       ldapRepo,
 		templates:      templates,
 		baseURL:        baseURL,
+		config:         cfg,
 	}
 }
 
@@ -310,6 +314,11 @@ func (h *AdminHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	// Redirect to login
-	http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+	// Redirect based on auth mode
+	logoutURL := "/admin/login"
+	if h.config.Server.Auth.Mode == "proxy" && h.config.Server.Auth.LogoutURL != "" {
+		logoutURL = h.config.Server.Auth.LogoutURL
+	}
+
+	http.Redirect(w, r, logoutURL, http.StatusSeeOther)
 }

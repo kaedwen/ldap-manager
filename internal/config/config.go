@@ -44,6 +44,7 @@ type AuthConfig struct {
 	HeaderEmail       string `yaml:"header_email"`        // Header name for email (default: Remote-Email)
 	HeaderName        string `yaml:"header_name"`         // Header name for display name (default: Remote-Name)
 	RequireGroup      string `yaml:"require_group"`       // Required group name for admin access (default: admins)
+	LogoutURL         string `yaml:"logout_url"`          // Logout URL for proxy mode (e.g., https://auth.example.com/logout)
 }
 
 type TLSConfig struct {
@@ -155,6 +156,7 @@ func (c *Config) setDefaults() {
 	c.Server.Auth.HeaderEmail = "Remote-Email"
 	c.Server.Auth.HeaderName = "Remote-Name"
 	c.Server.Auth.RequireGroup = "admins"
+	c.Server.Auth.LogoutURL = ""
 	c.Token.ValidityDays = 3
 	c.Token.LengthBytes = 32
 	c.Password.MinLength = 12
@@ -223,6 +225,9 @@ func (c *Config) applyEnvOverrides() {
 	}
 	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_REQUIRE_GROUP"); v != "" {
 		c.Server.Auth.RequireGroup = v
+	}
+	if v := os.Getenv("LDAP_MANAGER_SERVER_AUTH_LOGOUT_URL"); v != "" {
+		c.Server.Auth.LogoutURL = v
 	}
 
 	if v := os.Getenv("LDAP_MANAGER_LDAP_URL"); v != "" {
