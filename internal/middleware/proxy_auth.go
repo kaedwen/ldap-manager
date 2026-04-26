@@ -59,24 +59,42 @@ func ProxyAuth(cfg *config.Config, sessionService *service.SessionService) func(
 				"groups", remoteGroups,
 				"email", remoteEmail)
 
-			// Create or update session
-			sessionCookie, csrfToken, err := sessionService.CreateSession(userDN)
-			if err != nil {
-				slog.Error("proxy auth: failed to create session", "error", err, "user", remoteUser)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
+			// Check if valid session already exists
+			existingCookie, err := r.Cookie("session")
+			var sessionCookie, csrfToken string
+
+			if err == nil && existingCookie != nil {
+				// Try to validate existing session
+				existingUserDN, existingCSRF, err := sessionService.ValidateSession(existingCookie.Value)
+				if err == nil && existingUserDN == userDN {
+					// Valid session exists for this user, reuse it
+					sessionCookie = existingCookie.Value
+					csrfToken = existingCSRF
+					slog.Debug("proxy auth: reusing existing session", "user", remoteUser)
+				}
 			}
 
-			// Set session cookie
-			http.SetCookie(w, &http.Cookie{
-				Name:     "session",
-				Value:    sessionCookie,
-				Path:     "/",
-				MaxAge:   cfg.Server.Session.MaxAge,
-				HttpOnly: true,
-				Secure:   cfg.Server.TLS.Enabled,
-				SameSite: http.SameSiteStrictMode,
-			})
+			// Create new session if no valid session exists
+			if sessionCookie == "" {
+				sessionCookie, csrfToken, err = sessionService.CreateSession(userDN)
+				if err != nil {
+					slog.Error("proxy auth: failed to create session", "error", err, "user", remoteUser)
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+					return
+				}
+
+				// Set session cookie
+				http.SetCookie(w, &http.Cookie{
+					Name:     "session",
+					Value:    sessionCookie,
+					Path:     "/",
+					MaxAge:   cfg.Server.Session.MaxAge,
+					HttpOnly: true,
+					Secure:   cfg.Server.TLS.Enabled,
+					SameSite: http.SameSiteStrictMode,
+				})
+				slog.Debug("proxy auth: created new session", "user", remoteUser)
+			}
 
 			// Store user info in context for handlers
 			user := &domain.User{
