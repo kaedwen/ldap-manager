@@ -187,9 +187,18 @@ ldap-manager exposes health endpoints on a **separate port** (default: 9090):
 - Doesn't interfere with main routing/proxy
 
 **Docker:**
+
+The Docker image includes a built-in health check binary (works with `FROM scratch`):
+
 ```yaml
+# Health check is built into the image (HEALTHCHECK instruction)
+# No external tools (wget/curl) needed!
 healthcheck:
-  test: ["CMD-SHELL", "wget http://localhost:9090/health || exit 1"]
+  test: ["CMD", "/app/healthcheck"]
+  interval: 30s
+  timeout: 3s
+  start_period: 5s
+  retries: 3
 ```
 
 **Kubernetes:**
@@ -215,9 +224,8 @@ services:
       - "8080:8080"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
-    healthcheck:
-      test: ["CMD-SHELL", "wget http://localhost:9090/health || exit 1"]
-      interval: 30s
+    # Health check is built into the Docker image
+    # Override if needed with custom settings
 ```
 
 ### Kubernetes

@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -88,13 +89,7 @@ func isCommonPassword(password string) bool {
 	}
 
 	lowerPassword := strings.ToLower(password)
-	for _, common := range commonPasswords {
-		if lowerPassword == common {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(commonPasswords, lowerPassword)
 }
 
 // ValidatePasswordWithUsername checks if password contains username
@@ -111,4 +106,33 @@ func ValidatePasswordWithUsername(password, username string) error {
 	}
 
 	return nil
+}
+
+// GetRequirementsDescription returns a human-readable description of the password requirements
+func (r PasswordRequirements) GetRequirementsDescription() string {
+	requirements := []string{}
+
+	// Minimum length
+	requirements = append(requirements, fmt.Sprintf("at least %d characters", r.MinLength))
+
+	// Character requirements
+	charReqs := []string{}
+	if r.RequireUpper {
+		charReqs = append(charReqs, "uppercase")
+	}
+	if r.RequireLower {
+		charReqs = append(charReqs, "lowercase")
+	}
+	if r.RequireDigit {
+		charReqs = append(charReqs, "digits")
+	}
+	if r.RequireSpecial {
+		charReqs = append(charReqs, "special characters")
+	}
+
+	if len(charReqs) > 0 {
+		requirements = append(requirements, strings.Join(charReqs, ", "))
+	}
+
+	return "Must be " + strings.Join(requirements, " with ")
 }

@@ -20,6 +20,13 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o ldap-manager \
     ./cmd/ldap-manager
 
+# Build healthcheck binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o healthcheck \
+    ./cmd/healthcheck
+
 # Verify binary
 RUN ./ldap-manager --version || echo "Binary built successfully"
 
@@ -30,6 +37,7 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /build/ldap-manager .
+COPY --from=builder /build/healthcheck .
 
 # Copy web assets
 COPY --from=builder /build/web ./web
@@ -39,10 +47,8 @@ COPY --from=builder /build/configs/config.yaml.example ./configs/
 
 EXPOSE 8080 9090
 
-# Note: Health check not possible with scratch image (no shell/wget)
-# Use external health checks on port 9090:
-#   curl http://localhost:9090/health
-#   Docker/Podman: healthcheck.test: ["CMD-SHELL", "wget ..."]
-#   Kubernetes: livenessProbe.httpGet.port: 9090
+# Health check using our static binary
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/app/healthcheck"]
 
 ENTRYPOINT ["/app/ldap-manager"]

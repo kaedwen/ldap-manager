@@ -58,7 +58,10 @@ func (h *ResetHandler) ShowForm(w http.ResponseWriter, r *http.Request) {
 	// Show password reset form
 	data := TemplateData{
 		User: user,
-		Data: map[string]string{"token": token},
+		Data: map[string]string{
+			"token":           token,
+			"password_policy": h.resetService.GetPasswordPolicyDescription(),
+		},
 	}
 
 	if err := h.templates.ExecuteTemplate(w, "reset_form.html", data); err != nil {
@@ -82,7 +85,10 @@ func (h *ResetHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	if newPassword != confirmPassword {
 		data := TemplateData{
 			Error: "Passwords do not match",
-			Data:  map[string]string{"token": token},
+			Data: map[string]string{
+				"token":           token,
+				"password_policy": h.resetService.GetPasswordPolicyDescription(),
+			},
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		if err := h.templates.ExecuteTemplate(w, "reset_form.html", data); err != nil {
@@ -96,7 +102,7 @@ func (h *ResetHandler) Submit(w http.ResponseWriter, r *http.Request) {
 		var errorMsg string
 		switch err {
 		case domain.ErrPasswordTooWeak:
-			errorMsg = "Password does not meet strength requirements. Must be at least 12 characters with uppercase, lowercase, digits, and special characters."
+			errorMsg = "Password does not meet strength requirements. " + h.resetService.GetPasswordPolicyDescription() + "."
 		case domain.ErrTokenNotFound, domain.ErrTokenExpired:
 			errorMsg = "Invalid or expired reset token"
 		default:
@@ -105,7 +111,10 @@ func (h *ResetHandler) Submit(w http.ResponseWriter, r *http.Request) {
 
 		data := TemplateData{
 			Error: errorMsg,
-			Data:  map[string]string{"token": token},
+			Data: map[string]string{
+				"token":           token,
+				"password_policy": h.resetService.GetPasswordPolicyDescription(),
+			},
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		if err := h.templates.ExecuteTemplate(w, "reset_form.html", data); err != nil {

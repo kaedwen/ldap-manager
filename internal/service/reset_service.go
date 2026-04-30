@@ -154,3 +154,8 @@ func (s *ResetService) ResetPassword(token, newPassword string) error {
 	slog.Info("password reset completed", "user", user.UID, "dn", user.DN)
 	return nil
 }
+
+// GetPasswordPolicyDescription returns a human-readable description of the password policy
+func (s *ResetService) GetPasswordPolicyDescription() string {
+	return s.passwordReqs.GetRequirementsDescription()
+}
