@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-ldap/ldap/v3"
 	"github.com/kaedwen/ldap-manager/internal/config"
 	"github.com/kaedwen/ldap-manager/internal/domain"
+	"golang.org/x/crypto/md4"
 )
 
 // LDAPRepositoryImpl implements the LDAPRepository interface
@@ -327,6 +329,7 @@ func (r *LDAPRepositoryImpl) ClearResetToken(userDN string) error {
 }
 
 // SetPassword sets a new password for a user
+// Also sets the Samba NT hash if the user has the sambaSamAccount objectClass
 func (r *LDAPRepositoryImpl) SetPassword(userDN, newPassword string) error {
 	conn, err := r.getConn()
 	if err != nil {
@@ -340,8 +343,45 @@ func (r *LDAPRepositoryImpl) SetPassword(userDN, newPassword string) error {
 		return fmt.Errorf("failed to set password: %w", err)
 	}
 
+	// Try to set Samba NT hash
+	ntHash := generateNTHash(newPassword)
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+
+	sambaModifyRequest := ldap.NewModifyRequest(userDN, nil)
+	sambaModifyRequest.Replace("sambaNTPassword", []string{ntHash})
+	sambaModifyRequest.Replace("sambaPwdLastSet", []string{timestamp})
+
+	if err := conn.Modify(sambaModifyRequest); err != nil {
+		// Log as warning if Samba attributes can't be set (user might not have sambaSamAccount objectClass)
+		slog.Warn("failed to set samba password hash", "user_dn", userDN, "error", err.Error())
+	} else {
+		slog.Info("samba password hash updated", "user_dn", userDN)
+	}
+
 	slog.Info("password changed successfully", "user_dn", userDN)
 	return nil
+}
+
+// generateNTHash generates an NT hash (MD4) for Samba
+func generateNTHash(password string) string {
+	// Convert password to UTF-16LE
+	utf16le := encodeUTF16LE(password)
+
+	// Calculate MD4 hash
+	hash := md4.New()
+	hash.Write(utf16le)
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
+// encodeUTF16LE encodes a string to UTF-16LE bytes
+func encodeUTF16LE(s string) []byte {
+	runes := []rune(s)
+	bytes := make([]byte, len(runes)*2)
+	for i, r := range runes {
+		bytes[i*2] = byte(r)
+		bytes[i*2+1] = byte(r >> 8)
+	}
+	return bytes
 }
 
 // entryToUser converts an LDAP entry to a domain.User
