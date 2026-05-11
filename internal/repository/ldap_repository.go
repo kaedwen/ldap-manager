@@ -26,6 +26,9 @@ type LDAPRepository interface {
 	// Password operations
 	SetPassword(userDN, newPassword string) error
 
+	// Health check
+	HealthCheck() error
+
 	// Lifecycle
 	Close() error
 }

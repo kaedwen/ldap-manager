@@ -403,6 +403,32 @@ func (r *LDAPRepositoryImpl) entryToUser(entry *ldap.Entry) *domain.User {
 	return user
 }
 
+// HealthCheck verifies the LDAP connection is working
+func (r *LDAPRepositoryImpl) HealthCheck() error {
+	conn, err := r.getConn()
+	if err != nil {
+		return fmt.Errorf("failed to get LDAP connection: %w", err)
+	}
+
+	// Perform a simple search to verify the connection works
+	searchRequest := ldap.NewSearchRequest(
+		r.config.LDAP.BaseDN,
+		ldap.ScopeBaseObject,
+		ldap.NeverDerefAliases,
+		1, 5, false,
+		"(objectClass=*)",
+		[]string{"dn"},
+		nil,
+	)
+
+	_, err = conn.Search(searchRequest)
+	if err != nil {
+		return fmt.Errorf("LDAP health check search failed: %w", err)
+	}
+
+	return nil
+}
+
 // Close closes the LDAP connection
 func (r *LDAPRepositoryImpl) Close() error {
 	r.mu.Lock()

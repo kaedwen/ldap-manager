@@ -104,7 +104,7 @@ func main() {
 	// Initialize handlers
 	adminHandler := handler.NewAdminHandler(authService, sessionService, resetService, ldapRepo, templates, baseURL, cfg)
 	resetHandler := handler.NewResetHandler(resetService, templates)
-	healthHandler := handler.NewHealthHandler()
+	healthHandler := handler.NewHealthHandler(ldapRepo)
 
 	// Initialize and start server
 	srv := server.NewServer(
